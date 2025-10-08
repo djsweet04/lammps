@@ -376,10 +376,12 @@ __device__ void FixLbMulticomponent::cuda_calc_moments(int x, int y, int z){
  * For lesser dimensions, set iLen, zLen, and/or yLen to 1 and i, z, and/or y to 0
  */
  __device__ __host__ int calcIndex(int xLen, int yLen, int zLen, int iLen, int x, int y, int z, int i){
-  return ((z * yLen + y) * xLen + x) * iLen + i;
+  return (i + (z * iLen + y * zLen * iLen + x * yLen * zLen * iLen));;
  }
 
-/* void FixLbMulticomponent::calc_moments(int x, int y, int z) {
+
+//Needed for dumping to xdmf for the time being
+void FixLbMulticomponent::calc_moments(int x, int y, int z) {
   double rho, phi, psi, j[3], fi, gi, ki;
   int i;
   rho = phi = psi = j[0] = j[1] = j[2] = 0.0;
@@ -401,7 +403,7 @@ __device__ void FixLbMulticomponent::cuda_calc_moments(int x, int y, int z){
   u_lb[x][y][z][1] = j[1]/rho;
   u_lb[x][y][z][2] = j[2]/rho;
   pressure_lb[x][y][z] = pressure(rho,phi,psi);
-} */
+}
 
 __device__ void FixLbMulticomponent::cuda_calc_equilibrium(int x, int y, int z) {
   cuda_calc_gradient_laplacian(x,y,z, dev_density_lb, dev_density_gradient, dev_laplace_rho);
