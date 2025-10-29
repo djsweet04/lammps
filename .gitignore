@@ -55,3 +55,8 @@ out/RelWithDebInfo
 out/Release
 out/x86
 out/x64
+
+#Input/output files from various tests
+*.xdmf
+*.raw
+*.in

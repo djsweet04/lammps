@@ -30,6 +30,7 @@
 
 #include "fix_lb_multicomponent.h"
 #include "latboltz_const.h"
+#include "fix_lb_multicomponent_cuda.h"
 
 #include "citeme.h"
 #include "memory.h"
@@ -38,7 +39,6 @@
 #include "update.h"
 #include "error.h"
 #include "random_mars.h"
-#include "fix_lb_multicomponent_cuda.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -124,7 +124,7 @@ void cuda_update_cube(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax
             ((zmax-zmin)+th_per_blk.z-1)/th_per_blk.z);
   datacpy_cpu_to_gpu();
   cuda_read_sites<<<num_blocks,th_per_blk>>>(xmin,xmax,ymin,ymax,zmin,zmax);
-  cuda_write_sites<<<num_blocks,th_per_blk>>(xmin-1,xmax-1,ymin-1,ymax-1,zmin-1,zmax-1);
+  cuda_write_sites<<<num_blocks,th_per_blk>>>(xmin-1,xmax-1,ymin-1,ymax-1,zmin-1,zmax-1);
   datacpy_gpu_to_cpu();
 }
 
@@ -376,7 +376,7 @@ __device__ void FixLbMulticomponent::cuda_calc_moments(int x, int y, int z){
  * For lesser dimensions, set iLen, zLen, and/or yLen to 1 and i, z, and/or y to 0
  */
  __device__ __host__ int calcIndex(int xLen, int yLen, int zLen, int iLen, int x, int y, int z, int i){
-  return (i + (z * iLen + y * zLen * iLen + x * yLen * zLen * iLen));;
+  return (i + (z * iLen + y * zLen * iLen + x * yLen * zLen * iLen));
  }
 
 
@@ -1805,3 +1805,4 @@ FixLbMulticomponent::FixLbMulticomponent(LAMMPS *lmp, int argc, char **argv)
   dump_xdmf(update->ntimestep);
 
 }
+
