@@ -1,5 +1,5 @@
 #ifdef FIX_CLASS
-FixStyle(lb/multicomponent/cuda,FixLbMulticomponent)
+FixStyle(lb/multicomponent-cuda,FixLbMulticomponentCuda)
 #else
 
 #ifndef LMP_FIX_LB_MULTICOMPONENT_CUDA_H
