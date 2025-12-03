@@ -1,5 +1,5 @@
 #ifdef FIX_CLASS
-FixStyle(lb/multicomponent-cuda,FixLbMulticomponentCuda)
+FixStyle(lb/multicomponent-cuda, FixLbMulticomponentCuda)
 #else
 
 #ifndef LMP_FIX_LB_MULTICOMPONENT_CUDA_H
@@ -11,7 +11,7 @@ FixStyle(lb/multicomponent-cuda,FixLbMulticomponentCuda)
 
 
 namespace LAMMPS_NS{
-    class FixLbMulticomponentCuda : public FixLbFluid {
+    class FixLbMulticomponentCuda : public FixLbMulticomponent {
     public:
         FixLbMulticomponentCuda(class LAMMPS *, int, char **);
         ~FixLbMulticomponentCuda() override;
@@ -49,6 +49,24 @@ namespace LAMMPS_NS{
         double *dev_wg19;
         double *dev_e19;
         double *dev_w_lb19;
+
+        void lb_update();
+        void halo_comm();
+        void cuda_update_cube(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax);
+        void datacpy_cpu_to_gpu();
+        void allocateArrays();
+        void datacpy_gpu_to_cpu();
+        void cuda_read_sites(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax);
+        void cuda_write_sites(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax);
+        void cuda_calc_moments(int x, int y, int z);
+        void cuda_calc_equilibrium(int x, int y, int z);
+        void cuda_collide_stream(int x, int y, int z);
+        void cuda_calc_gradient_laplacian(int x, int y, int z, double *field, double *gradient, double *laplacian);
+        void cuda_calc_chemical_potentials(int x, int y, int z);
+        void cuda_calc_feq(int x, int y, int z);
+        void cuda_calc_geq(int x, int y, int z);
+        void cuda_calc_keq(int x, int y, int z);
+
     };
 }
 #endif

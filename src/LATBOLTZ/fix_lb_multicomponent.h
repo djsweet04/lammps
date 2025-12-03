@@ -63,20 +63,8 @@ namespace LAMMPS_NS {
     void initial_integrate(int) override;
     void end_of_step() override;
 
-  private:
-    double tau_r, tau_p, tau_s;
-    double gamma_p, gamma_s;
-    double kappa1, kappa2, kappa3;
-    double kappa_rr, kappa_pp, kappa_ss, kappa_rp, kappa_ps, kappa_rs;
-    double alpha;
 
-    int seed;
-    double C1, C2, C3;
-    int radius;
-    double C1_drop, C2_drop;
-    double C1_film, C2_film;
-    double thickness;
-
+  protected:
     double ****g_lb;                                
     double ****gnew;                              
     double ****geq;    
@@ -98,7 +86,20 @@ namespace LAMMPS_NS {
     double ***mu_rho;
     double ***mu_phi;
     double ***mu_psi;
-    
+
+    double tau_r, tau_p, tau_s;
+    double gamma_p, gamma_s;
+    double kappa1, kappa2, kappa3;
+    double kappa_rr, kappa_pp, kappa_ss, kappa_rp, kappa_ps, kappa_rs;
+    double alpha;
+
+    int seed;
+    double C1, C2, C3;
+    int radius;
+    double C1_drop, C2_drop;
+    double C1_film, C2_film;
+    double thickness;
+
     void init_parameters(int, char **);
     void init_lattice();
     void destroy_lattice();

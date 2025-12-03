@@ -68,7 +68,7 @@ void FixLbMulticomponent::end_of_step() {
   dump_xdmf(update->ntimestep);
 }
 
-void FixLbMulticomponent::lb_update() {
+void FixLbMulticomponentCuda::lb_update() {
 
 #if 1
   // no overlap of communication and computation
@@ -117,7 +117,7 @@ void FixLbMulticomponent::lb_update() {
 /*
  * Initialize CUDA kernels
  */
-void cuda_update_cube(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax){
+void FixLbMulticomponentCuda::cuda_update_cube(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax){
   dim3 th_per_blk(8, 8, 8);
   dim3 num_blocks(((xmax-xmin)+th_per_blk.x-1)/th_per_blk.x,
             ((ymax-ymin)+th_per_blk.y-1)/th_per_blk.y,
@@ -131,7 +131,7 @@ void cuda_update_cube(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax
 /*
  * Copy necessary data to GPU and allocate arrays
  */
-void datacpy_cpu_to_gpu(){
+void FixLbMulticomponentCuda::datacpy_cpu_to_gpu(){
   allocateArrays();
   //constants
   cudaMemcpy(dev_wg19, wg19, 19 * 3 * 3 * sizeof(double), cudaMemcpyHostToDevice);
@@ -140,9 +140,9 @@ void datacpy_cpu_to_gpu(){
 
   //Lattice grids
   size_t gridSize = subNbx * subNby * subNbz * numvel * sizeof(float);
-  cudamemcpy(dev_f_lb, f_lb, gridSize, cudaMemcpyHostToDevice);
-  cudamemcpy(dev_g_lb, g_lb, gridSize, cudaMemcpyHostToDevice);
-  cudamemcpy(dev_k_lb, k_lb, gridSize, cudaMemcpyHostToDevice);
+  cudaMemcpy(dev_f_lb, f_lb, gridSize, cudaMemcpyHostToDevice);
+  cudaMemcpy(dev_g_lb, g_lb, gridSize, cudaMemcpyHostToDevice);
+  cudaMemcpy(dev_k_lb, k_lb, gridSize, cudaMemcpyHostToDevice);
 
   
 }
@@ -150,112 +150,70 @@ void datacpy_cpu_to_gpu(){
 /*
  * Allocate arrays for gpu
  */
-void allocateArrays(){
+void FixLbMulticomponentCuda::allocateArrays(){
   //Constants
   size_t size = 19 * 3 * 3 * sizeof(double);
-  cudaMalloc((void *)&dev_wg19, size);
+  cudaMalloc((void **)&dev_wg19, size);
   size = 19 * 3 * sizeof(int);
-  cudaMalloc((void *)&dev_e19, 19 * 3 * sizeof(int));
+  cudaMalloc((void **)&dev_e19, 19 * 3 * sizeof(int));
   size = 19 * sizeof(double);
-  cudaMalloc((void *)&dev_w_lb19, 19 * sizeof(double));
+  cudaMalloc((void **)&dev_w_lb19, 19 * sizeof(double));
 
   size = subNbx * subNby * subNbz * numvel * sizeof(double);
-  cudaMalloc((void *)&dev_f_lb, size);
-  cudaMalloc((void *)&dev_g_lb, size);
-  cudaMalloc((void *)&dev_k_lb, size);
+  cudaMalloc((void **)&dev_f_lb, size);
+  cudaMalloc((void **)&dev_g_lb, size);
+  cudaMalloc((void **)&dev_k_lb, size);
 
-  cudaMalloc((void *)&dev_feq, size);
-  cudaMalloc((void *)&dev_geq, size);
-  cudaMalloc((void *)&dev_keq, size);
+  cudaMalloc((void **)&dev_feq, size);
+  cudaMalloc((void **)&dev_geq, size);
+  cudaMalloc((void **)&dev_keq, size);
 
-  cudaMalloc((void *)&dev_fnew, size);
-  cudaMalloc((void *)&dev_gnew, size);
-  cudaMalloc((void *)&dev_knew, size);
+  cudaMalloc((void **)&dev_fnew, size);
+  cudaMalloc((void **)&dev_gnew, size);
+  cudaMalloc((void **)&dev_knew, size);
 
   size = subNbx * subNby * subNbz * sizeof(double);
-  cudaMalloc((void *)&dev_pressure_lb, size);
-  cudaMalloc((void *)&dev_phi_lb, size);
-  cudaMalloc((void *)&dev_psi_lb, size);
-  cudaMalloc((void *)&dev_density_lb, size);
+  cudaMalloc((void **)&dev_pressure_lb, size);
+  cudaMalloc((void **)&dev_phi_lb, size);
+  cudaMalloc((void **)&dev_psi_lb, size);
+  cudaMalloc((void **)&dev_density_lb, size);
 
-  cudaMalloc((void *)&dev_laplace_rho, size);
-  cudaMalloc((void *)&dev_laplace_phi, size);
-  cudaMalloc((void *)&dev_laplace_psi, size);
-  cudaMalloc((void *)&dev_mu_phi, size);
-  cudaMalloc((void *)&dev_mu_psi, size);
+  cudaMalloc((void **)&dev_laplace_rho, size);
+  cudaMalloc((void **)&dev_laplace_phi, size);
+  cudaMalloc((void **)&dev_laplace_psi, size);
+  cudaMalloc((void **)&dev_mu_phi, size);
+  cudaMalloc((void **)&dev_mu_psi, size);
 
   size = size = subNbx * subNby * subNbz * 3 * sizeof(double);
-  cudaMalloc((void *)&dev_u_lb, size);
-  cudaMalloc((void *)&dev_density_gradient, size);
-  cudaMalloc((void *)&dev_phi_gradient, size);
-  cudaMalloc((void *)&dev_psi_gradient, size);
+  cudaMalloc((void **)&dev_u_lb, size);
+  cudaMalloc((void **)&dev_density_gradient, size);
+  cudaMalloc((void **)&dev_phi_gradient, size);
+  cudaMalloc((void **)&dev_psi_gradient, size);
 }
 
 /*
  * Copy data back to CPU
  */
-void datacpy_gpu_to_cpu(){
+void FixLbMulticomponentCuda::datacpy_gpu_to_cpu(){
   size_t gridSize = subNbx * subNby * subNbz * numvel * sizeof(float);
-  cudamemcpy(f_new, dev_fnew, gridSize, cudaMemcpyDeviceToHost);
-  cudamemcpy(g_new, dev_gnew, gridSize, cudaMemcpyDeviceToHost);
-  cudamemcpy(k_new, dev_knew, gridSize, cudaMemcpyDeviceToHost);
+  cudaMemcpy(fnew, dev_fnew, gridSize, cudaMemcpyDeviceToHost);
+  cudaMemcpy(gnew, dev_gnew, gridSize, cudaMemcpyDeviceToHost);
+  cudaMemcpy(knew, dev_knew, gridSize, cudaMemcpyDeviceToHost);
 
   size_t gridSize = subNbx * subNby * subNbz *sizeof(float);
-  cudamemcpy(density_lb, dev_density_lb, gridSize, cudaMemcpyDeviceToHost);
-  cudamemcpy(phi_lb, dev_phi_lb, gridSize, cudaMemcpyDeviceToHost);
-  cudamemcpy(psi_lb, dev_psi_lb, gridSize, cudaMemcpyDeviceToHost);
-  cudamemcpy(pressure_lb, dev_pressure_lb, gridSize, cudaMemcpyDeviceToHost);
+  cudaMemcpy(density_lb, dev_density_lb, gridSize, cudaMemcpyDeviceToHost);
+  cudaMemcpy(phi_lb, dev_phi_lb, gridSize, cudaMemcpyDeviceToHost);
+  cudaMemcpy(psi_lb, dev_psi_lb, gridSize, cudaMemcpyDeviceToHost);
+  cudaMemcpy(pressure_lb, dev_pressure_lb, gridSize, cudaMemcpyDeviceToHost);
 
   size_t gridSize = subNbx * subNby * subNbz * 3 * sizeof(float);
-  cudamemcpy(u_lb, dev_u_lb, gridSize, cudaMemcpyDeviceToHost);
+  cudaMemcpy(u_lb, dev_u_lb, gridSize, cudaMemcpyDeviceToHost);
 }
-
-/* void FixLbMulticomponent::update_cube(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax) {
-  int x;
-  read_slab(xmin,ymin,ymax,zmin,zmax);
-  read_slab(xmin+1,ymin,ymax,zmin,zmax);
-  for (x=xmin+2; x<xmax; ++x) {
-    update_slab(x,ymin,ymax,zmin,zmax);
-  }
-}
-
-void FixLbMulticomponent::update_slab(int x, int ymin, int ymax, int zmin, int zmax) {
-  int y;
-  read_column(x,ymin,zmin,zmax);
-  read_column(x,ymin+1,zmin,zmax);
-  for (y=ymin+2; y<ymax; ++y) {
-    update_column(x,y,zmin,zmax);
-  }
-}
-
-void FixLbMulticomponent::update_column(int x, int y, int zmin, int zmax) {
-  int z;
-  read_site(x,y,zmin);
-  read_site(x,y,zmin+1);
-  for (z=zmin+2; z<zmax; ++z) {
-    read_site(x,y,z);
-    write_site(x-1,y-1,z-1);
-  }
-}
-
-void FixLbMulticomponent::read_slab(int x, int ymin, int ymax, int zmin, int zmax) {
-  int y;
-  for (y=ymin; y<ymax; ++y) {
-    read_column(x,y,zmin,zmax);
-  }
-}
-
-void FixLbMulticomponent::read_column(int x, int y, int zmin, int zmax) {
-  int z;
-  for (z=zmin; z<zmax; ++z) {
-    read_site(x,y,z);
-  }
-} */
 
 /*
  * Assign processes to a lattice site and call functions
  */
-__global__ void cuda_read_sites(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax){
+__global__ void FixLbMulticomponentCuda::cuda_read_sites(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax){
   int gx = blockIdx.x * blockDim.x + threadIdx.x;
   int gy = blockIdx.y * blockDim.y + threadIdx.y;
   int gz = blockIdx.z * blockDim.z + threadIdx.z; 
@@ -274,7 +232,7 @@ void FixLbMulticomponent::read_site(int x, int y, int z) {
 /*
  * Perform collisions, synchronize, then stream
  */
-__global__ void cuda_write_sites(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax){
+__global__ void FixLbMulticomponentCuda::cuda_write_sites(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax){
   int gx = blockIdx.x * blockDim.x + threadIdx.x;
   int gy = blockIdx.y * blockDim.y + threadIdx.y;
   int gz = blockIdx.z * blockDim.z + threadIdx.z; 
@@ -282,7 +240,7 @@ __global__ void cuda_write_sites(int xmin, int xmax, int ymin, int ymax, int zmi
   if(gx >= xmax - xmin || gy >= ymax - ymin  || gz >= zmax - zmin)
     return;
 
-  cuda_calc_equilibriums(gx,gy,gz);
+  cuda_calc_equilibrium(gx,gy,gz);
   cudaDeviceSynchronize();
   cuda_collide_stream(gx,gy,gz);
   cudaDeviceSynchronize();
@@ -295,10 +253,10 @@ void FixLbMulticomponent::write_site(int x, int y, int z) {
 /*
  * Perform collision and streaming step
  */
-__device__ void cuda_collide_stream(int x, int y, int z){
+__device__ void FixLbMulticomponentCuda::cuda_collide_stream(int x, int y, int z){
   int i, xnew, ynew, znew;
   for (i=0; i<numvel; ++i) {
-    int dirIdx = calcIndex(1, 1, numvel, 3, 0, 0, i, 0)
+    int dirIdx = calcIndex(1, 1, numvel, 3, 0, 0, i, 0);
     xnew = x + dev_e19[dirIdx];
     ynew = y + dev_e19[dirIdx+1];
     znew = z + dev_e19[dirIdx+2];
@@ -310,20 +268,7 @@ __device__ void cuda_collide_stream(int x, int y, int z){
   }
 }
 
-/* void FixLbMulticomponent::collide_stream(int x, int y, int z) {
-  int i, xnew, ynew, znew;
-  calc_equilibrium(x,y,z);
-  for (i=0; i<numvel; ++i) {
-    xnew = x + e19[i][0];
-    ynew = y + e19[i][1];
-    znew = z + e19[i][2];
-    fnew[xnew][ynew][znew][i] = f_lb[x][y][z][i] - (f_lb[x][y][z][i] - feq[x][y][z][i])/tau_r;
-    gnew[xnew][ynew][znew][i] = g_lb[x][y][z][i] - (g_lb[x][y][z][i] - geq[x][y][z][i])/tau_p;
-    knew[xnew][ynew][znew][i] = k_lb[x][y][z][i] - (k_lb[x][y][z][i] - keq[x][y][z][i])/tau_s;
-  }
-} */
-
-__device__ void FixLbMulticomponent::cuda_calc_moments(int x, int y, int z){
+__device__ void FixLbMulticomponentCuda::cuda_calc_moments(int x, int y, int z){
   //Offset for halo layer
   //x+=2;
   //y+=2;
@@ -356,20 +301,6 @@ __device__ void FixLbMulticomponent::cuda_calc_moments(int x, int y, int z){
   dev_pressure_lb[idx] = pressure(rho,phi,psi);
 
 }
-
-//Less efficient indexing scheme
-/*  __device__ __host__ gridInline19 int idx(int x, int y, int z, int i){
-   return (z * subNby + y) * subNbx + x * numvel + i;
- }
-
- __device__ __host__ gridInlineDir int idx(int x, int y, int z, int i){
-  return (z * subNby + y) * subNbx + x * 3 + i;
- }
-
- __device__ __host__ gridInline int idx(int x, int y, int z){
-   return (z * subNby + y) * (subNbx) + x;
- }  */
-
 
  /*
  * Calculate linear index for up to 4D arrays
@@ -405,7 +336,7 @@ void FixLbMulticomponent::calc_moments(int x, int y, int z) {
   pressure_lb[x][y][z] = pressure(rho,phi,psi);
 }
 
-__device__ void FixLbMulticomponent::cuda_calc_equilibrium(int x, int y, int z) {
+__device__ void FixLbMulticomponentCuda::cuda_calc_equilibrium(int x, int y, int z) {
   cuda_calc_gradient_laplacian(x,y,z, dev_density_lb, dev_density_gradient, dev_laplace_rho);
   cuda_calc_gradient_laplacian(x,y,z, dev_phi_lb, dev_phi_gradient, dev_laplace_phi);
   cuda_calc_gradient_laplacian(x,y,z, dev_psi_lb, dev_psi_gradient, dev_laplace_psi);
@@ -415,48 +346,24 @@ __device__ void FixLbMulticomponent::cuda_calc_equilibrium(int x, int y, int z) 
   cuda_calc_keq(x,y,z);
 }
 
-/* void FixLbMulticomponent::calc_equilibrium(int x, int y, int z) {
-  calc_gradient_laplacian(x,y,z, density_lb, density_gradient, laplace_rho);
-  calc_gradient_laplacian(x,y,z, phi_lb, phi_gradient, laplace_phi);
-  calc_gradient_laplacian(x,y,z, psi_lb, psi_gradient, laplace_psi);
-  calc_chemical_potentials(x,y,z);
-  calc_feq(x,y,z);
-  calc_geq(x,y,z);
-  calc_keq(x,y,z);
-} */
 
-__device__ void FixLbMulticomponent::cuda_calc_gradient_laplacian(int x, int y, int z, double *field, double *gradient, double *laplacian) {
+__device__ void FixLbMulticomponentCuda::cuda_calc_gradient_laplacian(int x, int y, int z, double *field, double *gradient, double *laplacian) {
   int i, xp, yp, zp, dir;
   int idx = calcIndex(subNbx, subNby, subNbz, 1, x, y, z, 0);
   laplacian[idx] = 0.0;
   for (dir=0; dir<3; dir++) gradient[calcIndex(subNbx, subNby, subNbz, 3, x, y, z, dir)] = 0.0;
   for (i=0; i<numvel; i++) {
-    int dirIdx = calcIndex(1, 1, numvel, 3, 0, 0, i, 0)
+    int dirIdx = calcIndex(1, 1, numvel, 3, 0, 0, i, 0);
     xp = x + dev_e19[dirIdx];
     yp = y + dev_e19[dirIdx+1];
     zp = z + dev_e19[dirIdx+2];
     for (dir=0; dir<3; dir++) {
-      gradient[calcIndex(subNbx, subNby, subNbz, 3, x, y, z)] += 3.*dev_w_lb19[i]*field[calcIndex(subNbx, subNby, subNbz, 1, x, y, z, 0)]*dev_e19[calcIndex(1, 1, numvel, 3, 0, 0, i, dir)];
+      gradient[calcIndex(subNbx, subNby, subNbz, 3, x, y, z, dir)] += 3.*dev_w_lb19[i]*field[calcIndex(subNbx, subNby, subNbz, 1, x, y, z, 0)]*dev_e19[calcIndex(1, 1, numvel, 3, 0, 0, i, dir)];
     }
-    int pIdx = calcIndex(subNbx, subNby, subNbz, 1, xp, yp, zp, 0)
+    int pIdx = calcIndex(subNbx, subNby, subNbz, 1, xp, yp, zp, 0);
     laplacian[idx] += 6.*dev_w_lb19[i]*(field[pIdx]-field[idx]);
   }
 }
-
-/* void FixLbMulticomponent::calc_gradient_laplacian(int x, int y, int z, double ***field, double ****gradient, double ***laplacian) {
-  int i, xp, yp, zp, dir;
-  laplacian[x][y][z] = 0.0;
-  for (dir=0; dir<3; dir++) gradient[x][y][z][dir] = 0.0;
-  for (i=0; i<numvel; i++) {
-    xp = x + e19[i][0];
-    yp = y + e19[i][1];
-    zp = z + e19[i][2];
-    for (dir=0; dir<3; dir++) {
-      gradient[x][y][z][dir] += 3.*w_lb19[i]*field[xp][yp][zp]*e19[i][dir];
-    }
-    laplacian[x][y][z] += 6.*w_lb19[i]*(field[xp][yp][zp]-field[x][y][z]);
-  }
-} */
 
 __host__ __device__ double FixLbMulticomponent::pressure(double rho, double phi, double psi) {
   const double rho2 = rho*rho;
@@ -494,7 +401,7 @@ __host__ __device__ double FixLbMulticomponent::pressure(double rho, double phi,
   return p0;
 }
 
-__device__ void FixLbMulticomponent::cuda_calc_chemical_potentials(int x, int y, int z) {
+__device__ void FixLbMulticomponentCuda::cuda_calc_chemical_potentials(int x, int y, int z) {
   int idx = calcIndex(subNbx, subNby, subNbz, 1, x, y, z, 0);
   const double alpha2 = alpha*alpha;
   const double rho = dev_density_lb[idx];
@@ -528,40 +435,7 @@ __device__ void FixLbMulticomponent::cuda_calc_chemical_potentials(int x, int y,
 
 }
 
-/* void FixLbMulticomponent::calc_chemical_potentials(int x, int y, int z) {
-  const double alpha2 = alpha*alpha;
-  const double rho = density_lb[x][y][z];
-  const double phi = phi_lb[x][y][z];
-  const double psi = psi_lb[x][y][z];
-  const double D2rho = laplace_rho[x][y][z];
-  const double D2phi = laplace_phi[x][y][z];
-  const double D2psi = laplace_psi[x][y][z];
-
-#if 0
-  /* mu_rho is not needed for the calculations.
-     The following expression has not been tested!
-     (Eq. (38) in Semprebon et al. may contain typos) */
-/*  mu_rho[x][y][z] = // Eq. (38) in Semprebon et al.
-      kappa1/8.*(rho+psi-phi)*(rho+phi-psi-2.)*(rho+phi-psi-1.)
-    + kappa2/8.*(rho-phi-psi)*(rho-phi-psi-2.)*(rho-phi-psi-1.)
-    - alpha2/4.*((kappa1+kappa2)*(D2rho-D2psi)-(kappa1-kappa2)*D2phi);
-#endif
-
-  mu_phi[x][y][z] = // Eq. (39) in Semprebon et al.
-      kappa1/8.*(rho+phi-psi)*(rho+phi-psi-2.)*(rho+phi-psi-1.)
-    - kappa2/8.*(rho-phi-psi)*(rho-phi-psi-2.)*(rho-phi-psi-1.)
-    - alpha2/4.*((kappa1-kappa2)*(D2rho-D2psi)+(kappa1+kappa2)*D2phi);
-
-  mu_psi[x][y][z] = // Eq. (40) in Semprebon et al.
-    - kappa1/8.*(rho+phi-psi)*(rho+phi-psi-2.)*(rho+phi-psi-1.)
-    - kappa2/8.*(rho-phi-psi)*(rho-phi-psi-2.)*(rho-phi-psi-1.)
-    + kappa3*psi*(psi-1.)*(2.*psi-1.)
-    + alpha2/4.*((kappa1+kappa2)*D2rho+(kappa1-kappa2)*D2phi
-		 -(kappa1+kappa2+4.*kappa3)*D2psi);
-
-} */
-
-__device__ void FixLbMulticomponent::cuda_calc_feq(int x, int y, int z) {
+__device__ void FixLbMulticomponentCuda::cuda_calc_feq(int x, int y, int z) {
   int idx = calcIndex(subNbx, subNby, subNbz, 1, x, y, z, 0);
   const double rho = dev_density_lb[idx];
   const double phi = dev_phi_lb[idx];
@@ -580,24 +454,11 @@ __device__ void FixLbMulticomponent::cuda_calc_feq(int x, int y, int z) {
   double fi, ruu[9], G[9];
   int i;
 
-  /* ruu[0][0] = rho*u[0]*u[0];
-  ruu[1][1] = rho*u[1]*u[1];
-  ruu[2][2] = rho*u[2]*u[2];
-  ruu[0][1] = rho*u[0]*u[1];
-  ruu[1][2] = rho*u[1]*u[2];
-  ruu[2][0] = rho*u[2]*u[0]; */
   for(i=0; i<3; ++i) {
     ruu[i*3+i] = rho*u[i]*u[i];
     ruu[i*3+(i+1)%3] = rho*u[i]*u[(i+1)%3];
     ruu[(i+1)%3*3+i] = ruu[i*3+(i+1)%3];
   }
-
- /*  G[0][0] = kappa_rr*Drho[0]*Drho[0]+kappa_pp*Dphi[0]*Dphi[0]+kappa_ss*Dpsi[0]*Dpsi[0];
-  G[1][1] = kappa_rr*Drho[1]*Drho[1]+kappa_pp*Dphi[1]*Dphi[1]+kappa_ss*Dpsi[1]*Dpsi[1];
-  G[2][2] = kappa_rr*Drho[2]*Drho[2]+kappa_pp*Dphi[2]*Dphi[2]+kappa_ss*Dpsi[2]*Dpsi[2];
-  G[0][1] = kappa_rr*Drho[0]*Drho[1]+kappa_pp*Dphi[0]*Dphi[1]+kappa_ss*Dpsi[0]*Dpsi[1];
-  G[1][2] = kappa_rr*Drho[1]*Drho[2]+kappa_pp*Dphi[1]*Dphi[2]+kappa_ss*Dpsi[1]*Dpsi[2];
-  G[2][0] = kappa_rr*Drho[2]*Drho[0]+kappa_pp*Dphi[2]*Dphi[0]+kappa_ss*Dpsi[2]*Dpsi[0]; */
 
   for (i=0; i<3; ++i) {
     G[i*3+i] = kappa_rr*Drho[i]*Drho[i]+kappa_pp*Dphi[i]*Dphi[i]+kappa_ss*Dpsi[i]*Dpsi[i];
@@ -669,89 +530,15 @@ __device__ void FixLbMulticomponent::cuda_calc_feq(int x, int y, int z) {
   dev_feq[calcIndex(subNbx, subNby, subNbz, numvel, x, y, z, 0)] = rho - sumf;
 }
 
-/* void FixLbMulticomponent::calc_feq(int x, int y, int z) {
-  const double rho = density_lb[x][y][z];
-  const double phi = phi_lb[x][y][z];
-  const double psi = psi_lb[x][y][z];
-  const double p0 = pressure_lb[x][y][z];
-  const double *u = u_lb[x][y][z];
-  const double *Drho = density_gradient[x][y][z];
-  const double *Dphi = phi_gradient[x][y][z];
-  const double *Dpsi = psi_gradient[x][y][z];
-  const double D2rho = laplace_rho[x][y][z];
-  const double D2phi = laplace_phi[x][y][z];
-  const double D2psi = laplace_psi[x][y][z];
-  double fi, ruu[3][3], G[3][3];
-  int i;
-
-  ruu[0][0] = rho*u[0]*u[0];
-  ruu[1][1] = rho*u[1]*u[1];
-  ruu[2][2] = rho*u[2]*u[2];
-  ruu[0][1] = rho*u[0]*u[1];
-  ruu[1][2] = rho*u[1]*u[2];
-  ruu[2][0] = rho*u[2]*u[0];
-
-  G[0][0] = kappa_rr*Drho[0]*Drho[0]+kappa_pp*Dphi[0]*Dphi[0]+kappa_ss*Dpsi[0]*Dpsi[0];
-  G[1][1] = kappa_rr*Drho[1]*Drho[1]+kappa_pp*Dphi[1]*Dphi[1]+kappa_ss*Dpsi[1]*Dpsi[1];
-  G[2][2] = kappa_rr*Drho[2]*Drho[2]+kappa_pp*Dphi[2]*Dphi[2]+kappa_ss*Dpsi[2]*Dpsi[2];
-  G[0][1] = kappa_rr*Drho[0]*Drho[1]+kappa_pp*Dphi[0]*Dphi[1]+kappa_ss*Dpsi[0]*Dpsi[1];
-  G[1][2] = kappa_rr*Drho[1]*Drho[2]+kappa_pp*Dphi[1]*Dphi[2]+kappa_ss*Dpsi[1]*Dpsi[2];
-  G[2][0] = kappa_rr*Drho[2]*Drho[0]+kappa_pp*Dphi[2]*Dphi[0]+kappa_ss*Dpsi[2]*Dpsi[0];
-
-  double sumf = 0.0;
-  for (i=1; i<numvel; ++i) { // Eq. (52) Semprebon et al.
-    fi  = 3.*w_lb19[i]*p0;
-    fi += 3.*w_lb19[i]*rho*(u[0]*e19[i][0]+u[1]*e19[i][1]+u[2]*e19[i][2]);
-    fi += 9./2.*w_lb19[i]*((ruu[0][0]*e19[i][0]+2.*ruu[0][1]*e19[i][1])*e19[i][0]
-			 +(ruu[1][1]*e19[i][1]+2.*ruu[1][2]*e19[i][2])*e19[i][1]
-			 +(ruu[2][2]*e19[i][2]+2.*ruu[2][0]*e19[i][0])*e19[i][2]);
-    fi -= 3./2.*w_lb19[i]*(ruu[0][0]+ruu[1][1]+ruu[2][2]);
-    fi -= 3.*w_lb19[i]*(kappa_rr*rho*D2rho+kappa_pp*phi*D2phi+kappa_ss*psi*D2psi);
-    fi -= 3.*w_lb19[i]*(kappa_rp*(rho*D2phi+phi*D2rho)
-		      +kappa_rs*(rho*D2psi+psi*D2rho)
-		      +kappa_ps*(phi*D2psi+psi*D2phi));
-    fi += 3.*(wg19[i][0][0]*G[0][0]+wg19[i][1][1]*G[1][1]+wg19[i][2][2]*G[2][2]
-	      +wg19[i][0][1]*G[0][1]+wg19[i][1][2]*G[1][2]+wg19[i][2][0]*G[2][0]);
-    fi += 6.*kappa_rp*(wg19[i][0][0]*Drho[0]*Dphi[0]
-		       +wg19[i][1][1]*Drho[1]*Dphi[1]
-		       +wg19[i][2][2]*Drho[2]*Dphi[2]);
-    fi += 6.*kappa_rs*(wg19[i][0][0]*Drho[0]*Dpsi[0]
-		       +wg19[i][1][1]*Drho[1]*Dpsi[1]
-		       +wg19[i][2][2]*Drho[2]*Dpsi[2]);
-    fi += 6.*kappa_ps*(wg19[i][0][0]*Dphi[0]*Dpsi[0]
-		       +wg19[i][1][1]*Dphi[1]*Dpsi[1]
-		       +wg19[i][2][2]*Dphi[2]*Dpsi[2]);
-    fi += 3.*kappa_rp*(wg19[i][0][1]*(Drho[0]*Dphi[1]+Drho[1]*Dphi[0])
-		       +wg19[i][1][2]*(Drho[1]*Dphi[2]+Drho[2]*Dphi[1])
-		       +wg19[i][2][0]*(Drho[2]*Dphi[0]+Drho[0]*Dphi[2]));
-    fi += 3.*kappa_rs*(wg19[i][0][1]*(Drho[0]*Dpsi[1]+Drho[1]*Dpsi[0])
-		       +wg19[i][1][2]*(Drho[1]*Dpsi[2]+Drho[2]*Dpsi[1])
-		       +wg19[i][2][0]*(Drho[2]*Dpsi[0]+Drho[0]*Dpsi[2]));
-    fi += 3.*kappa_ps*(wg19[i][0][1]*(Dphi[0]*Dpsi[1]+Dphi[1]*Dpsi[0])
-		       +wg19[i][1][2]*(Dphi[1]*Dpsi[2]+Dphi[2]*Dpsi[1])
-		       +wg19[i][2][0]*(Dphi[2]*Dpsi[0]+Dphi[0]*Dpsi[2]));
-    feq[x][y][z][i] = fi;
-    sumf += fi;
-  }
-  feq[x][y][z][0] = rho - sumf;
-} */
-
-void FixLbMulticomponent::cuda_calc_geq(int x, int y, int z) {
+void FixLbMulticomponentCuda::cuda_calc_geq(int x, int y, int z) {
   int idx = calcIndex(subNbx, subNby, subNbz, 1, x, y, z, 0);
   const double phi = dev_phi_lb[idx];
   const double mu_p = dev_mu_phi[idx];
   //Following pointers will point to the initial index of the velocity vector at (x,y,z,dir)
   int uIdx = calcIndex(subNbx, subNby, subNbz, 3, x, y, z, 0);
-  const double *u = dev_u_lb[uIdx];
+  const double *u = &dev_u_lb[uIdx];
   double gi, puu[9];
   int i;
-  
-  /* puu[0][0] = phi*u[0]*u[0];
-  puu[1][1] = phi*u[1]*u[1];
-  puu[2][2] = phi*u[2]*u[2];
-  puu[0][1] = phi*u[0]*u[1];
-  puu[1][2] = phi*u[1]*u[2];
-  puu[2][0] = phi*u[2]*u[0]; */
 
   for(i=0; i<3; ++i) {
     puu[i*3+i] = phi*u[i]*u[i];
@@ -779,50 +566,15 @@ void FixLbMulticomponent::cuda_calc_geq(int x, int y, int z) {
   dev_geq[calcIndex(subNbx, subNby, subNbz, numvel, x, y, z, 0)] = phi - sumg;
 }
 
-/* void FixLbMulticomponent::calc_geq(int x, int y, int z) {
-  const double phi = phi_lb[x][y][z];
-  const double mu_p = mu_phi[x][y][z];
-  const double *u = u_lb[x][y][z];
-  double gi, puu[3][3];
-  int i;
-  
-  puu[0][0] = phi*u[0]*u[0];
-  puu[1][1] = phi*u[1]*u[1];
-  puu[2][2] = phi*u[2]*u[2];
-  puu[0][1] = phi*u[0]*u[1];
-  puu[1][2] = phi*u[1]*u[2];
-  puu[2][0] = phi*u[2]*u[0];
-  
-  double sumg = 0.0;
-  for (i=1; i<numvel; ++i) { // Eq. (53) Semprebon et al.
-    gi  = 3.*w_lb19[i]*gamma_p*mu_p;
-    gi += 3.*w_lb19[i]*phi*(u[0]*e19[i][0]+u[1]*e19[i][1]+u[2]*e19[i][2]);
-    gi += 9./2.*w_lb19[i]*((puu[0][0]*e19[i][0]+2.*puu[0][1]*e19[i][1])*e19[i][0]
-			 +(puu[1][1]*e19[i][1]+2.*puu[1][2]*e19[i][2])*e19[i][1]
-			 +(puu[2][2]*e19[i][2]+2.*puu[2][0]*e19[i][0])*e19[i][2]);
-    gi -= 3./2.*w_lb19[i]*(puu[0][0]+puu[1][1]+puu[2][2]);
-    geq[x][y][z][i] = gi;
-    sumg += gi;
-  }
-  geq[x][y][z][0] = phi - sumg;
-} */
-
-void FixLbMulticomponent::cuda_calc_keq(int x, int y, int z) {
+void FixLbMulticomponentCuda::cuda_calc_keq(int x, int y, int z) {
   int idx = calcIndex(subNbx, subNby, subNbz, 1, x, y, z, 0);
   const double psi = dev_psi_lb[idx];
   const double mu_s = dev_mu_psi[idx];
   //Following pointers will point to the initial index of the velocity vector at (x,y,z,dir)
   int uIdx = calcIndex(subNbx, subNby, subNbz, 3, x, y, z, 0);
-  const double *u = dev_u_lb[uIdx];
+  const double *u = &dev_u_lb[uIdx];
   double ki, puu[9];
   int i;
-  
- /*  puu[0][0] = psi*u[0]*u[0];
-  puu[1][1] = psi*u[1]*u[1];
-  puu[2][2] = psi*u[2]*u[2];
-  puu[0][1] = psi*u[0]*u[1];
-  puu[1][2] = psi*u[1]*u[2];
-  puu[2][0] = psi*u[2]*u[0]; */
 
   for(i=0; i<3; ++i) {
     puu[i*3+i] = psi*u[i]*u[i];
@@ -849,34 +601,6 @@ void FixLbMulticomponent::cuda_calc_keq(int x, int y, int z) {
   }
   dev_keq[calcIndex(subNbx, subNby, subNbz, numvel, x, y, z, 0)] = psi - sumk;
 }
-
-/* void FixLbMulticomponent::calc_keq(int x, int y, int z) {
-  const double psi = psi_lb[x][y][z];
-  const double mu_s = mu_psi[x][y][z];
-  const double *u = u_lb[x][y][z];
-  double ki, puu[3][3];
-  int i;
-  
-  puu[0][0] = psi*u[0]*u[0];
-  puu[1][1] = psi*u[1]*u[1];
-  puu[2][2] = psi*u[2]*u[2];
-  puu[0][1] = psi*u[0]*u[1];
-  puu[1][2] = psi*u[1]*u[2];
-  puu[2][0] = psi*u[2]*u[0];
-  
-  double sumk = 0.0;
-  for (i=1; i<numvel; ++i) { // Eq. (54) Semprebon et al.
-    ki  = 3.*w_lb19[i]*gamma_s*mu_s;
-    ki += 3.*w_lb19[i]*psi*(u[0]*e19[i][0]+u[1]*e19[i][1]+u[2]*e19[i][2]);
-    ki += 9./2.*w_lb19[i]*((puu[0][0]*e19[i][0]+2.*puu[0][1]*e19[i][1])*e19[i][0]
-			 +(puu[1][1]*e19[i][1]+2.*puu[1][2]*e19[i][2])*e19[i][1]
-			 +(puu[2][2]*e19[i][2]+2.*puu[2][0]*e19[i][0])*e19[i][2]);
-    ki -= 3./2.*w_lb19[i]*(puu[0][0]+puu[1][1]+puu[2][2]);
-    keq[x][y][z][i] = ki;
-    sumk += ki;
-  }
-  keq[x][y][z][0] = psi - sumk;
-} */
 
 void FixLbMulticomponent::calc_moments_full() {
   for (int x=halo_extent[0]; x<subNbx-halo_extent[0]; x++) {
