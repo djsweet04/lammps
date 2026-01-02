@@ -51,7 +51,6 @@ namespace LAMMPS_NS{
         double *dev_w_lb19;
 
         void lb_update();
-        void halo_comm();
         void cuda_update_cube(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax);
         void datacpy_cpu_to_gpu();
         void allocateArrays();

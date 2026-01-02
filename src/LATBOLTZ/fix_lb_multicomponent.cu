@@ -56,15 +56,15 @@ static const char cite_fix_lbmulticomponent[] =
     "  pages   = {108898}\n"
     "}\n\n";
 
-int FixLbMulticomponent::setmask() {
+int FixLbMulticomponentCuda::setmask() {
   return FixConst::INITIAL_INTEGRATE | FixConst::END_OF_STEP;
 }
 
-void FixLbMulticomponent::initial_integrate(int vflag) {
+void FixLbMulticomponentCuda::initial_integrate(int vflag) {
   this->lb_update();
 }
 
-void FixLbMulticomponent::end_of_step() {
+void FixLbMulticomponentCuda::end_of_step() {
   dump_xdmf(update->ntimestep);
 }
 
@@ -1503,7 +1503,7 @@ void FixLbMulticomponent::init_parameters(int argc, char **argv) {
 
 }
 
-FixLbMulticomponent::~FixLbMulticomponent() {
+FixLbMulticomponent::~FixLbMulticomponentCuda() {
 	
   destroy_output();
   destroy_halo();
@@ -1511,7 +1511,7 @@ FixLbMulticomponent::~FixLbMulticomponent() {
 
 }
 
-FixLbMulticomponent::FixLbMulticomponent(LAMMPS *lmp, int argc, char **argv)
+FixLbMulticomponent::FixLbMulticomponentCuda(LAMMPS *lmp, int argc, char **argv)
   : FixLbFluid(lmp, 9, argv), // use only the first 9 arguments to parse in FixLbFluid
   g_lb(nullptr), gnew(nullptr), geq(nullptr),
   k_lb(nullptr), knew(nullptr), keq(nullptr),
