@@ -8,6 +8,7 @@ FixStyle(lb/multicomponent-cuda, FixLbMulticomponentCuda)
 
 #include "fix.h"
 #include "fix_lb_multicomponent.h"
+#include "fix_lb_fluid.h"
 
 
 namespace LAMMPS_NS{

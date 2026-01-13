@@ -1503,7 +1503,7 @@ void FixLbMulticomponent::init_parameters(int argc, char **argv) {
 
 }
 
-FixLbMulticomponent::~FixLbMulticomponentCuda() {
+FixLbMulticomponentCuda::~FixLbMulticomponentCuda() {
 	
   destroy_output();
   destroy_halo();
@@ -1511,13 +1511,8 @@ FixLbMulticomponent::~FixLbMulticomponentCuda() {
 
 }
 
-FixLbMulticomponent::FixLbMulticomponentCuda(LAMMPS *lmp, int argc, char **argv)
-  : FixLbFluid(lmp, 9, argv), // use only the first 9 arguments to parse in FixLbFluid
-  g_lb(nullptr), gnew(nullptr), geq(nullptr),
-  k_lb(nullptr), knew(nullptr), keq(nullptr),
-  phi_lb(nullptr), psi_lb(nullptr), pressure_lb(nullptr), mu_phi(nullptr), mu_psi(nullptr),
-  density_gradient(nullptr), phi_gradient(nullptr), psi_gradient(nullptr),
-  laplace_rho(nullptr), laplace_phi(nullptr), laplace_psi(nullptr)
+FixLbMulticomponentCuda::FixLbMulticomponentCuda(LAMMPS *lmp, int argc, char **argv)
+  : FixLbMulticomponent(lmp, argc, argv)
 {
   if (lmp->citeme) lmp->citeme->add(cite_fix_lbmulticomponent);
 
