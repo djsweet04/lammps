@@ -1,5 +1,5 @@
 #ifdef FIX_CLASS
-FixStyle(lb/multicomponent/kokkos,FixLbMulticomponentKokkos)
+FixStyle(lb/multicomponent_kokkos,FixLbMulticomponentKokkos)
 #else
 
 #ifndef LMP_FIX_LB_MULTICOMPONENT_KOKKOS_H
@@ -20,7 +20,7 @@ namespace LAMMPS_NS {
     void initial_integrate(int) override;
     void end_of_step() override;   
     void calc_moments_full();
-    void init_mixture();
+    void init_mixture_d();
     void init_droplet(double radius);
     void init_liquid_lens(double radius);
     void init_double_emulsion(double radius);

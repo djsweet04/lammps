@@ -568,7 +568,7 @@ void FixLbMulticomponentKokkos::calc_moments_full() {
 }
 
 // homogeneous mixture of C1, C2, and C3 with random concentration fluctuations
-void FixLbMulticomponentKokkos::init_mixture() {
+void FixLbMulticomponentKokkos::init_mixture_d() {
   double rho, phi, psi;
   double C1_init, C2_init, C3_init;
   double C1tot=0., C2tot=0., C3tot=0.;
@@ -603,7 +603,7 @@ void FixLbMulticomponentKokkos::init_mixture() {
   MPI_Reduce(&C3tot,&C3tot_global,1,MPI_DOUBLE,MPI_SUM,0,world);
   double vol = Nbx*Nby*Nbz;
   if(comm->me==0){
-    error->message(FLERR,"Initialized ternary mixture with <C1> = {:f}, <C2> = {:f}, <C3> = {:f}",C1tot_global/vol,C2tot_global/vol,C3tot_global/vol);
+    error->message(FLERR,"Initialized Derek's super cool ternary mixture with <C1> = {:f}, <C2> = {:f}, <C3> = {:f}",C1tot_global/vol,C2tot_global/vol,C3tot_global/vol);
   }
 
   delete(random);
@@ -815,7 +815,7 @@ void FixLbMulticomponentKokkos::init_fluid() {
 
   switch(init_method) {
     case MIXTURE:
-      init_mixture();
+      init_mixture_d();
       break;
     case DROPLET:
       init_droplet(radius*dx_lb);
@@ -1460,9 +1460,10 @@ void FixLbMulticomponentKokkos::init_parameters(int argc, char **argv) {
 
 FixLbMulticomponentKokkos::~FixLbMulticomponentKokkos() {
 	
-  destroy_output();
-  destroy_halo();
-  destroy_lattice();
+  error->message(FLERR, "Kokkos fix constructor active");
+  //destroy_output();
+  //destroy_halo();
+  //destroy_lattice();
 
 }
 
@@ -1470,12 +1471,11 @@ FixLbMulticomponentKokkos::FixLbMulticomponentKokkos(LAMMPS *lmp, int argc, char
   : FixLbMulticomponent(lmp, argc, argv)
 {
   if (lmp->citeme) lmp->citeme->add(cite_fix_lbmulticomponent);
-
-  init_parameters(argc,argv);
+  /* init_parameters(argc,argv);
   init_lattice();
   init_halo();
   init_output();
   init_fluid();
-  dump_xdmf(update->ntimestep);
+  dump_xdmf(update->ntimestep); */
 
 }
