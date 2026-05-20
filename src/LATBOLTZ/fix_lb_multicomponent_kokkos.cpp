@@ -15,7 +15,8 @@
    Ternary Lattice Boltzmann Implementation
 
    Contributing authors: Ulf D. Schiller <uschiller@mailaps.org>,
-                         Fang Wang <fwang8@clemson.edu>
+                         Fang Wang <fwang8@clemson.edu>,
+						 Derek Sweet <dj.sweet@verizon.net>
 
    References:
    [1] Semprebon et al., Phys. Rev. E 93, 033305 (2016)
